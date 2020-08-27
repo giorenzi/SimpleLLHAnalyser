@@ -22,8 +22,6 @@ class Profile_Analyser:
         self.nbins = 0
         
         self.livetime = -1.
-        self.signalNormalization = -1.
-
         self.observation = None
 
         self.computedBestFit = False
@@ -49,11 +47,10 @@ class Profile_Analyser:
         print 'total background events:', np.sum(self.backgroundPDF)
         self.nbins = len(pdf)
 
-    def loadSignalPDF(self,pdf,norm):
+    def loadSignalPDF(self,pdf):
         if self.livetime < 0:
             raise ValueError('Livetime of the analysis is not defined yet. Please do this first!')
-        self.signalPDF = pdf.flatten()*self.livetime*norm
-        self.signalNormalization = norm
+        self.signalPDF = pdf.flatten()*self.livetime
         print 'total signal events:', np.sum(self.signalPDF)
         if self.nbins == len(pdf):
             self.ready = True
@@ -240,11 +237,11 @@ class Profile_Analyser:
             TS.append(self.TS)
             upperlimits.append(self.CalculateUpperLimit(conf_level))
                     
-        p_median = np.percentile(upperlimits, 50)*self.signalNormalization
-        p_95_low = np.percentile(upperlimits, 2.5)*self.signalNormalization
-        p_95_high = np.percentile(upperlimits, 97.5)*self.signalNormalization
-        p_68_low = np.percentile(upperlimits, 16.)*self.signalNormalization
-        p_68_high = np.percentile(upperlimits, 84.)*self.signalNormalization
+        p_median = np.percentile(upperlimits, 50)
+        p_95_low = np.percentile(upperlimits, 2.5)
+        p_95_high = np.percentile(upperlimits, 97.5)
+        p_68_low = np.percentile(upperlimits, 16.)
+        p_68_high = np.percentile(upperlimits, 84.)
 
         dic_brazilian = {}
         dic_brazilian['TS_dist'] = TS
