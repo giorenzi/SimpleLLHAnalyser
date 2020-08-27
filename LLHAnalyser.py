@@ -6,7 +6,7 @@ import scipy.special as sps
 from iminuit import Minuit
 
 
-class Profile_Analyzer:
+class Profile_Analyser:
 
     def __init__(self):
         
