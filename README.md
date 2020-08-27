@@ -19,7 +19,7 @@ import LLHAnalyser
 analysis = LLHAnalyser.Profile_Analyser()
 analysis.setLivetime(livetime)
 analysis.loadBackgroundPDF(bkgpdf)
-analysis.loadSignalPDF(sigpdf, norm)
+analysis.loadSignalPDF(sigpdf)
 analysis.setLLHtype('Poisson')
 conf_level = 90
 sens = analysis.CalculateSensitivity(100000, conf_level)
