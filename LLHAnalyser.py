@@ -4,7 +4,7 @@ from scipy.interpolate import UnivariateSpline
 import scipy.special as sps
 
 from iminuit import Minuit
-
+from tqdm import tqdm
 
 class Profile_Analyser:
 
@@ -44,14 +44,14 @@ class Profile_Analyser:
         if self.livetime < 0:
             raise ValueError('Livetime of the analysis is not defined yet. Please do this first!')
         self.backgroundPDF = pdf.flatten()*self.livetime
-        print 'total background events:', np.sum(self.backgroundPDF)
+        print('total background events:', np.sum(self.backgroundPDF))
         self.nbins = len(pdf)
 
     def loadSignalPDF(self,pdf):
         if self.livetime < 0:
             raise ValueError('Livetime of the analysis is not defined yet. Please do this first!')
         self.signalPDF = pdf.flatten()*self.livetime
-        print 'total signal events:', np.sum(self.signalPDF)
+        print('total signal events:', np.sum(self.signalPDF))
         if self.nbins == len(pdf):
             self.ready = True
         else:
