@@ -4,7 +4,6 @@ from scipy.interpolate import UnivariateSpline
 import scipy.special as sps
 
 from iminuit import Minuit
-from tqdm import tqdm
 
 class Profile_Analyser:
 
@@ -231,7 +230,7 @@ class Profile_Analyser:
         upperlimits = []
         TS = []
         
-        for i in tqdm(range(nTrials)):
+        for i in range(nTrials):
             self.sampleObservation(1.,0.)
             self.ComputeTestStatistics()
             TS.append(self.TS)
