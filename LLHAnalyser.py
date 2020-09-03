@@ -229,11 +229,13 @@ class Profile_Analyser:
 
         upperlimits = []
         TS = []
+        fits = []
         
         for i in range(nTrials):
             self.sampleObservation(1.,0.)
             self.ComputeTestStatistics()
             TS.append(self.TS)
+            fits.append(self.bestFit)
             upperlimits.append(self.CalculateUpperLimit(conf_level))
                     
         p_median = np.percentile(upperlimits, 50)
@@ -242,12 +244,14 @@ class Profile_Analyser:
         p_68_low = np.percentile(upperlimits, 16.)
         p_68_high = np.percentile(upperlimits, 84.)
 
-        dic_brazilian = {}
-        dic_brazilian['TS_dist'] = TS
-        dic_brazilian['error_68_low'] = p_68_low
-        dic_brazilian['error_68_high'] = p_68_high
-        dic_brazilian['error_95_low'] = p_95_low
-        dic_brazilian['error_95_high'] = p_95_high   
-        dic_brazilian['median'] = p_median
+        result_dic = {}
+        result_dic['TS_dist'] = TS
+        result_dic['bestFits'] = self.bestFit
+        result_dic['upper_limits'] = upperlimits
+        result_dic['error_68_low'] = p_68_low
+        result_dic['error_68_high'] = p_68_high
+        result_dic['error_95_low'] = p_95_low
+        result_dic['error_95_high'] = p_95_high   
+        result_dic['median'] = p_median
 
-        return dic_brazilian
+        return result_dic
