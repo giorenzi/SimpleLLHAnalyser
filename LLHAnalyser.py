@@ -28,16 +28,20 @@ class Profile_Analyser:
         self.TS = None
         
         self.samplingMethod = 'default'
+        self.moreOutput = False
         
     def setLivetime(self,lt):
         self.livetime = lt
 
     def setLLHtype(self,type):
-        availableTypes = ['Poisson']
+        availableTypes = ['Poisson', 'Effective']
         if type not in availableTypes:
             raise ValueError('LLH type not implemented yet. Choose amongst: '+availableTypes)
         else:
             self.LLHtype = type
+            
+    def moreOutput(self):
+        self.moreOutput = True
 
     def loadBackgroundPDF(self,pdf):
         if self.livetime < 0:
@@ -202,7 +206,7 @@ class Profile_Analyser:
                 TS_fix = 0.
             else:
                 TS_fix = 2*(self.bestFit['LLH_ref']-self.evaluateLLH(LLHmin_fix.fitarg['n1'],param_mean))
-            
+                
             dTS = self.TS - TS_fix
             
             if(dTS<deltaTS):
@@ -227,31 +231,42 @@ class Profile_Analyser:
         if self.LLHtype == None:
             raise ValueError('LLH type not defined yet!')
 
-        upperlimits = []
         TS = []
-        fits = []
+        upperlimits = []
+        if self.moreOutput:
+            fits = []
         
         for i in range(nTrials):
             self.sampleObservation(1.,0.)
             self.ComputeTestStatistics()
             TS.append(self.TS)
-            fits.append(self.bestFit)
-            upperlimits.append(self.CalculateUpperLimit(conf_level))
-                    
+            #temporary fix for NaNs
+            ul = self.CalculateUpperLimit(conf_level)
+            if np.isnan(ul):
+                print("Warning: NaN upper limit at trial {i}.\nRepeating trial.".format(i=i))
+                i-=1
+                continue
+            upperlimits.append(ul)
+              
+            
+            if self.moreOutput:
+                fits.append(self.bestFit)
+            
         p_median = np.percentile(upperlimits, 50)
         p_95_low = np.percentile(upperlimits, 2.5)
         p_95_high = np.percentile(upperlimits, 97.5)
         p_68_low = np.percentile(upperlimits, 16.)
         p_68_high = np.percentile(upperlimits, 84.)
 
-        result_dic = {}
-        result_dic['TS_dist'] = TS
-        result_dic['bestFits'] = self.bestFit
-        result_dic['upper_limits'] = upperlimits
-        result_dic['error_68_low'] = p_68_low
-        result_dic['error_68_high'] = p_68_high
-        result_dic['error_95_low'] = p_95_low
-        result_dic['error_95_high'] = p_95_high   
-        result_dic['median'] = p_median
+        dic_brazilian = {}
+        dic_brazilian['TS_dist'] = TS
+        dic_brazilian['error_68_low'] = p_68_low
+        dic_brazilian['error_68_high'] = p_68_high
+        dic_brazilian['error_95_low'] = p_95_low
+        dic_brazilian['error_95_high'] = p_95_high   
+        dic_brazilian['median'] = p_median
+        if self.moreOutput:
+            dic_brazilian['upperlimits'] = upperlimits
+            dic_brazilian['bestFits'] = fits
 
-        return result_dic
+        return dic_brazilian
