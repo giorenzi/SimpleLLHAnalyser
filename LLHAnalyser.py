@@ -40,7 +40,7 @@ class Profile_Analyser:
         else:
             self.LLHtype = type
             
-    def moreOutput(self):
+    def returnMoreOutput(self):
         self.moreOutput = True
 
     def loadBackgroundPDF(self,pdf):
@@ -237,17 +237,21 @@ class Profile_Analyser:
             fits = []
         
         for i in range(nTrials):
-            self.sampleObservation(1.,0.)
-            self.ComputeTestStatistics()
-            TS.append(self.TS)
-            #temporary fix for NaNs
-            ul = self.CalculateUpperLimit(conf_level)
-            if np.isnan(ul):
-                print("Warning: NaN upper limit at trial {i}.\nRepeating trial.".format(i=i))
-                i-=1
-                continue
-            upperlimits.append(ul)
-              
+            j = 0
+            while j < 5:
+                self.sampleObservation(1.,0.)
+                self.ComputeTestStatistics()
+                TS.append(self.TS)
+                #temporary fix for NaNs
+                ul = self.CalculateUpperLimit(conf_level)
+                if np.isnan(ul):
+                    print("Warning: NaN upper limit at trial {i}.\nRepeating trial.".format(i=i))
+                    j += 1
+                    if j > 4:
+                        print("Repeating trial too many times. Skipping.")
+                else:
+                    upperlimits.append(ul)
+                    j = 10
             
             if self.moreOutput:
                 fits.append(self.bestFit)
