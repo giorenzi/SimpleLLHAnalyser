@@ -40,7 +40,11 @@ class Profile_Analyser:
         else:
             self.LLHtype = type
             
+<<<<<<< HEAD
     def returnMoreOutput(self):
+=======
+    def saveMoreOutput(self):
+>>>>>>> 3e00cdbe88871b37730bfbaafba9754165562e09
         self.moreOutput = True
 
     def loadBackgroundPDF(self,pdf):
@@ -85,6 +89,11 @@ class Profile_Analyser:
         
     def evaluateLLH(self, n1, nsig):
         modelPDF = n1*self.backgroundPDF + nsig*self.signalPDF
+
+        if np.isnan(modelPDF).any():
+            print('nan in model array with n1,ns=',n1,nsig, self.computedBestFit)
+            sys.exit(1)
+
         bins_to_use = (modelPDF>0.)
 
         if self.LLHtype == 'Poisson':
@@ -111,19 +120,15 @@ class Profile_Analyser:
     
     def ComputeBestFit(self):
         LLHmin_DM=Minuit(self.evaluateLLH,
-             nsig=1e-3,n1=1.,
-             error_nsig=.1,error_n1=.1,
-             limit_nsig=(-1.,100.),limit_n1=(0.,10.),
+             nsig=1.,n1=1.,
+             error_nsig=.01,error_n1=.01,
+             limit_nsig=(-1.,100.),limit_n1=(-1.,10.),
              errordef=.5,print_level=0)  
         LLHmin_DM.migrad()
         
-        DM_fitarg_2=LLHmin_DM.fitarg
-        LLHmin_DM_2=Minuit(self.evaluateLLH, errordef=.5, print_level=0,pedantic=True, **DM_fitarg_2)
-        LLHmin_DM_2.migrad()
-
         self.bestFit = {}
-        self.bestFit['n1']=LLHmin_DM_2.fitarg['n1']
-        self.bestFit['nsig']=LLHmin_DM_2.fitarg['nsig']
+        self.bestFit['n1']=LLHmin_DM.fitarg['n1']
+        self.bestFit['nsig']=LLHmin_DM.fitarg['nsig']
         self.bestFit['LLH']=self.evaluateLLH(self.bestFit['n1'],self.bestFit['nsig'])
                 
         self.computedBestFit = True
