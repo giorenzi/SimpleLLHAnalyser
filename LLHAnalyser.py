@@ -1,8 +1,5 @@
 import numpy as np
-from scipy import optimize, interpolate
-from scipy.interpolate import UnivariateSpline
 import scipy.special as sps
-
 from iminuit import Minuit
 
 class Profile_Analyser:
@@ -88,16 +85,15 @@ class Profile_Analyser:
 
         if np.isnan(modelPDF).any():
             print('nan in model array with n1,ns=',n1,nsig, self.computedBestFit)
-            sys.exit(1)
-
-        bins_to_use = (modelPDF>0.)
 
         if self.LLHtype == 'Poisson':
+            bins_to_use = (modelPDF>0.)
             values = self.observation[bins_to_use]*np.log(modelPDF[bins_to_use])-modelPDF[bins_to_use]
 
         elif self.LLHtype == 'Effective':
             modelPDF_uncert2 = n1*self.backgroundPDF_uncert2 + nsig*self.signalPDF_uncert2
-    
+            bins_to_use = (modelPDF>0.)&(modelPDF_uncert2>0.) 
+
             alpha = modelPDF[bins_to_use]**2/modelPDF_uncert2[bins_to_use] +1.
             beta  = modelPDF[bins_to_use]/modelPDF_uncert2[bins_to_use]
 
@@ -118,7 +114,7 @@ class Profile_Analyser:
         LLHmin_DM=Minuit(self.evaluateLLH,
              nsig=1.,n1=1.,
              error_nsig=.01,error_n1=.01,
-             limit_nsig=(-1.,100.),limit_n1=(-1.,10.),
+             limit_nsig=(-1.,100.),limit_n1=(0.,10.),
              errordef=.5,print_level=0)  
         LLHmin_DM.migrad()
         
