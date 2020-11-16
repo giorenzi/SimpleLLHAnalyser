@@ -15,6 +15,8 @@ class Profile_Analyser:
         self.signalPDF = None
         self.backgroundPDF = None
         self.PDFs = dict()
+        self.ParamSettings = dict()
+        self.observationParams = dict()
 
         self.signalPDF_uncert2 = None
         self.backgroundPDF_uncert2 = None
@@ -59,7 +61,9 @@ class Profile_Analyser:
         self.PDFs[name] = pdf.flatten()*self.livetime
         if self.norm:
             print("PDFs are being normalised")
-            self.PDFs[name]/=np.sum(self.PDFs[name])
+            pdf_sum = np.sum(self.PDFs[name])
+            self.observationParams[name] = pdf_sum/self.Nevents
+            self.PDFs[name] /= pdf_sum
         print('total {0} events: {1}'.format(name, np.sum(self.PDFs[name])))
         if self.nbins == 0:
             self.nbins = len(self.PDFs[name])
@@ -73,18 +77,20 @@ class Profile_Analyser:
             
     def loadPDFandUncertainties(self, pdf, name):
         self.ready=False
-        if self.livetime < 0:
-            raise ValueError('Livetime of the analysis is not defined yet. Please do this first!')
+        #if self.livetime < 0:
+        #    raise ValueError('Livetime of the analysis is not defined yet. Please do this first!')
         if type(pdf) != tuple:
             raise ValueError('PDF must be a tuple of type (pdf, uncertainty_pdf)')
         if len(pdf) != 2:
             raise ValueError('PDF must be a tuple of type (pdf, uncertainty_pdf)') 
-        self.PDFs[name] = pdf[0].flatten()*self.livetime
+        #self.PDFs[name] = pdf[0].flatten()*self.livetime
+        self.loadPDF(pdf[0], name)
         self.PDFs_uncert2[name] = pdf[1].flatten()*self.livetime*self.livetime
         if self.norm:
             print("PDFs are being normalised")
-            self.PDFs[name]/=np.sum(self.PDFs[name])
+            #self.PDFs[name]/=np.sum(self.PDFs[name])
             self.PDFs_uncert2[name]/=np.sum(self.PDFs[name])**2
+        self.ParamSettings[name]=dict()
         #if self.nbins = len(pdf[0]):
         #    self.ready = True
         #else:
@@ -134,8 +140,34 @@ class Profile_Analyser:
                 self.PDFs_uncert2[name] /= np.sum(self.PDF_uncert2[name])**2
             #if self.nbins != len(morePDFs[name]):
             #    raise ValueError('Shape of {0} uncertainty pdf does not match the background pdf!'.format(name))
- 
 
+            
+    def setComponentParameters(self, name, value=None, error=None, limits=None):
+        if not name in self.PDFs.keys():
+            raise ValueError("Cannot find {0} among components loaded".format(name))
+        
+        if value:
+            if type(value)==int or type(value)==float:
+                self.ParamSettings[name]["value"]=value
+            else:
+                raise TypeError("value must be an int or float")
+        if error:
+            if type(error)==int or type(error)==float:
+                self.ParamSettings[name]["error"]=error
+            else:
+                raise TypeError("error must be an int or float")
+        if limits:
+            if all(isinstance(n, int) for n in limits) or all(isinstance(n, float) for n in limits):
+                if len(limits)!=2:
+                    raise ValueError("limits must be of length=2, of type (min, max)")
+                self.ParamSettings[name]["limits"]=limits
+                
+            else:
+                raise TypeError("limits must be a tuple of int or float")
+        
+        print("parameters for component {0}".format(name), self.ParamSettings[name])
+                
+    
     def sampleObservation(self, pars):
         '''
         Usage:
@@ -220,19 +252,59 @@ class Profile_Analyser:
     
     def ComputeBestFit(self):        
         
-        values = [0.]
-        fix    = [False]
-        error  = [.01]
-        limit  = [(0.,1.)]
-        name   = ['xi']
-        
+        try:
+            param_settings = self.ParamSettings['sig']
+            if 'value' in param_settings.keys():
+                values = [param_settings['value']]
+            else:
+                values = [0.]
+            if 'error' in param_settings.keys():
+                error = [param_settings['error']]
+            else:
+                error  = [.01]
+            if 'limits' in param_settings.keys():
+                limit = [param_settings['limits']]
+            else:
+                limit  = [(0.,1.)]
+        except:
+            values = [0.]
+            error  = [.01]
+            limit  = [(0.,1.)]
+            
+        fix    = [False]      
+        name   = ['xi']              
+                
         for i, pdfname in enumerate(self.PDFs.keys()):
             if pdfname == 'sig': continue
-            values.append(.5)
+            try:
+                #print("Setting parameters for {0}".format(pdfname))
+                param_settings = self.ParamSettings[pdfname]
+                print(1)
+                if 'value' in param_settings.keys():
+                    values.append(param_settings['value'])
+                else:
+                    values.append(.5)
+                print(2)
+                if 'error' in param_settings.keys():
+                    error.append(param_settings['error'])
+                else:
+                    error.append(.01)
+                print(3)
+                if 'limits' in param_settings.keys():
+                    limit.append(param_settings['limits'])
+                else:
+                    limit.append((0.,1.))
+                print(4)
+                print(values, error, limit)
+            except:
+                values.append(.5)
+                error.append(.01)
+                limit.append((0., 1.))
+                
             fix.append(False)
-            error.append(.01)
-            limit.append((0., 1.))
             name.append(f'n_{pdfname}')
+            
+        #print(values, error, limit)
        
         #values = np.array(values)
         #fix    = np.array(fix)
@@ -265,7 +337,7 @@ class Profile_Analyser:
         #    self.bestFit['LLH']=self.evaluateLLH(self.bestFit['nsig'],self.bestFit['n1'],*self.bestFit['more_n'])
         #else:
         self.bestFit['LLH']=self.evaluateLLH(self.bestFit['params'])
-        self.bestFit['param_names']=list(self.PDFs.keys())
+        self.bestFit['param_names']=[key for key in self.PDFs.keys()]
                 
         self.computedBestFit = True
         
@@ -274,7 +346,7 @@ class Profile_Analyser:
         
         if not self.computedBestFit:
             self.ComputeBestFit()
-                
+        '''        
         values = [0.]
         fix    = [True]
         error  = [.01]
@@ -294,6 +366,54 @@ class Profile_Analyser:
         #error = tuple(error)
         #limit = tuple(limit)
         #name = tuple(name)
+        '''
+        
+        try:
+            param_settings = self.ParamSettings['sig']
+            if 'value' in param_settings.keys():
+                values = [param_settings['value']]
+            else:
+                values = [0.]
+            if 'error' in param_settings.keys():
+                error = [param_settings['error']]
+            else:
+                error  = [.01]
+            if 'limits' in param_settings.keys():
+                limit = [param_settings['limits']]
+            else:
+                limit  = [(0.,1.)]
+        except:
+            values = [0.]
+            error  = [.01]
+            limit  = [(0.,1.)]
+            
+        fix    = [True]      
+        name   = ['xi']              
+                    
+        
+        for i, pdfname in enumerate(self.PDFs.keys()):
+            if pdfname == 'sig': continue
+            try:
+                param_settings = self.ParamSettings[pdfname]
+                if 'value' in param_settings.keys():
+                    values.append(param_settings['value'])
+                else:
+                    values.append(.5)
+                if 'error' in param_settings.keys():
+                    error.append(param_settings['error'])
+                else:
+                    error.append(.01)
+                if 'limits' in param_settings.keys():
+                    limit.append(param_settings['limits'])
+                else:
+                    limit.append((0.,1.))
+            except:
+                values.append(.5)
+                error.append(.01)
+                limit.append((0., 1.))
+                
+            fix.append(False)
+            name.append(f'n_{pdfname}')
         
         kwds = dict()
         kwds['errordef']=.5
@@ -347,7 +467,7 @@ class Profile_Analyser:
             nIterations += 1 
 
             param_up=param_up+3.*np.abs(param_up)
-            
+            '''
             values = [param_up]
             fix    = [True]
             error  = [.01]
@@ -367,7 +487,56 @@ class Profile_Analyser:
             #error = tuple(error)
             #limit = tuple(limit)
             #name = tuple(name)
-        
+            '''
+            
+            try:
+                param_settings = self.ParamSettings['sig']
+                #if 'value' in param_settings.keys():
+                #    values = [param_settings['value']]
+                #else:
+                #    values = [0.]
+                if 'error' in param_settings.keys():
+                    error = [param_settings['error']]
+                else:
+                    error  = [.01]
+                if 'limits' in param_settings.keys():
+                    limit = [param_settings['limits']]
+                else:
+                    limit  = [(0.,1.)]
+            except:
+                values = [0.]
+                error  = [.01]
+                limit  = [(0.,1.)]
+            
+            values  = [param_up]
+            fix    = [True]      
+            name   = ['xi']              
+                        
+            
+            for i, pdfname in enumerate(self.PDFs.keys()):
+                if pdfname == 'sig': continue
+                try:
+                    param_settings = self.ParamSettings[pdfname]
+                    if 'value' in param_settings.keys():
+                        values.append(param_settings['value'])
+                    else:
+                        values.append(.5)
+                    if 'error' in param_settings.keys():
+                        error.append(param_settings['error'])
+                    else:
+                        error.append(.01)
+                    if 'limits' in param_settings.keys():
+                        limit.append(param_settings['limits'])
+                    else:
+                        limit.append((0.,1.))
+                except:
+                    values.append(.5)
+                    error.append(.01)
+                    limit.append((0., 1.))
+                    
+                fix.append(False)
+                name.append(f'n_{pdfname}')
+            
             kwds = dict()
             kwds['errordef']=.5
             kwds['print_level']=0
@@ -398,7 +567,7 @@ class Profile_Analyser:
             nIterations += 1
 
             param_mean=(param_low+param_up)/2.
-            
+            '''
             values = [param_mean]
             fix    = [True]
             error  = [.01]
@@ -418,7 +587,58 @@ class Profile_Analyser:
             #error = tuple(error)
             #limit = tuple(limit)
             #name = tuple(name)
-        
+            '''
+            
+            try:
+                param_settings = self.ParamSettings['sig']
+                #if 'value' in param_settings.keys():
+                #    values = [param_settings['value']]
+                #else:
+                #    values = [0.]
+                if 'error' in param_settings.keys():
+                    error = [param_settings['error']]
+                else:
+                    error  = [.01]
+                if 'limits' in param_settings.keys():
+                    limit = [param_settings['limits']]
+                else:
+                    limit = [(0.,1.)]
+            except:
+                values = [0.]
+                error  = [.01]
+                limit  = [(0.,1.)]
+            
+            values  = [param_mean]
+            fix    = [True]      
+            name   = ['xi']              
+                        
+            
+            for i, pdfname in enumerate(self.PDFs.keys()):
+                if pdfname == 'sig': continue
+                try:
+                    param_settings = self.ParamSettings[pdfname]
+                    if 'value' in param_settings.keys():
+                        values.append(param_settings['value'])
+                    else:
+                        values.append(.5)
+                    if 'error' in param_settings.keys():
+                        error.append(param_settings['error'])
+                    else:
+                        error.append(.01)
+                    if 'limits' in param_settings.keys():
+                        limit.append(param_settings['limits'])
+                    else:
+                        limit.append((0.,1.))
+                except:
+                    values.append(.5)
+                    error.append(.01)
+                    limit.append((0., 1.))
+                    
+                fix.append(False)
+                name.append(f'n_{pdfname}')
+            
+            print(limit)
+            
             kwds = dict()
             kwds['errordef']=.5
             kwds['print_level']=0
@@ -460,6 +680,8 @@ class Profile_Analyser:
     
     def CalculateSensitivity(self,nTrials, conf_level):
 
+        print(self.ParamSettings)
+        
         if self.LLHtype == None:
             raise ValueError('LLH type not defined yet!')
 
@@ -469,8 +691,14 @@ class Profile_Analyser:
             fits = []
         
         params = [0.]
-        for i in range(len(self.PDFs.keys())-1):
-            params.append(1.)
+        for pdfname in self.PDFs.keys():
+            if pdfname == 'sig': continue
+            try:
+                params.append(self.observationParams[pdfname])
+            except:
+                raise ValueError("PDF for {0} not correctly loaded. Missing observation normalisation")
+        #for i in range(len(self.PDFs.keys())-1):
+        #    params.append(1.)
         
         for i in range(nTrials):
             self.sampleObservation(params)
